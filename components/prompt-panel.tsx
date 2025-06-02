@@ -1,16 +1,14 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ImageIcon, Loader2, UploadIcon, XIcon } from "lucide-react"
+import { ImageIcon, Loader2 } from "lucide-react"
 import { generateImage } from "@/lib/actions"
 import type { ImageGenerationResult } from "@/lib/types"
-import Image from "next/image"
 import { useToast } from "@/components/ui/use-toast"
 
 interface PromptPanelProps {
@@ -25,31 +23,11 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
 
   const [prompt, setPrompt] = useState("")
   const [category, setCategory] = useState("")
-  const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageCount, setImageCount] = useState<number>(1)
   const [seed, setSeed] = useState<string>("0")
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setImageFile(file)
-      const reader = new FileReader()
-      reader.onload = () => {
-        setImagePreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const removeImage = () => {
-    setImageFile(null)
-    setImagePreview(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
+  const [imageHeight, setImageHeight] = useState<number>(768)
+  const [imageWidth, setImageWidth] = useState<number>(512)
+  const [maintainAspectRatio, setMaintainAspectRatio] = useState<boolean>(false)
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -60,7 +38,7 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
     e.preventDefault();
     console.log("Form submitted");
 
-    if (!prompt.trim() && !imageFile) return;
+    if (!prompt.trim()) return;
 
     try {
       setIsGenerating(true);
@@ -70,7 +48,9 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
         "Prompt": prompt,
         "Image Count": imageCount.toString(),
         "Seed": seed,
-        "Category": category
+        "Category": category,
+        "Height": imageHeight.toString(),
+        "Width": imageWidth.toString()
       }
 
       console.log("Sending webhook data:", webhookData)
@@ -150,7 +130,7 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
         }
 
         // Call generateImage just to maintain the flow, but we don't use its result
-        await generateImage(prompt, imageFile, imageCount, seed);
+        await generateImage(prompt, null, imageCount, seed);
         
       } catch (error) {
         console.error('Error:', error);
@@ -172,6 +152,32 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
         duration: 3000,
       });
       setIsGenerating(false);
+    }
+  }
+
+  const handleDimensionChange = (dimension: 'height' | 'width', value: number) => {
+    // Ensure value is a multiple of 16
+    const roundedValue = Math.round(value / 16) * 16
+    // Clamp height to maximum of 1792
+    const clampedValue = Math.min(roundedValue, 1792)
+
+    if (maintainAspectRatio) {
+      const aspectRatio = imageWidth / imageHeight
+      if (dimension === 'height') {
+        setImageHeight(clampedValue)
+        const newWidth = Math.round((clampedValue * aspectRatio) / 16) * 16
+        setImageWidth(Math.min(newWidth, 1792))
+      } else {
+        setImageWidth(clampedValue)
+        const newHeight = Math.round((clampedValue / aspectRatio) / 16) * 16
+        setImageHeight(Math.min(newHeight, 1792))
+      }
+    } else {
+      if (dimension === 'height') {
+        setImageHeight(clampedValue)
+      } else {
+        setImageWidth(clampedValue)
+      }
     }
   }
 
@@ -247,45 +253,56 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-gray-700">Visual Reference (Optional)</label>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label htmlFor="imageHeight" className="text-sm font-medium text-gray-700">
+                Image Height
+              </label>
+              <Input
+                id="imageHeight"
+                type="number"
+                value={imageHeight}
+                onChange={(e) => handleDimensionChange('height', Number(e.target.value))}
+                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400/20"
+                disabled={isGenerating}
+                step="16"
+                min="16"
+                max="1792"
+              />
+              <p className="text-xs text-gray-500">Max height: 1792px (multiples of 16)</p>
+            </div>
 
-            {imagePreview ? (
-              <div className="relative aspect-square w-full max-w-[200px] mx-auto border-2 border-purple-200 rounded-lg overflow-hidden shadow-md">
-                <Image src={imagePreview || "/placeholder.svg"} alt="Image preview" fill className="object-cover" />
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="absolute top-2 right-2 h-6 w-6 bg-red-500 hover:bg-red-600"
-                  onClick={removeImage}
-                  disabled={isGenerating}
-                >
-                  <XIcon className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center border-2 border-dashed border-purple-300 rounded-lg p-6 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isGenerating}
-                  className="flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-50"
-                >
-                  <UploadIcon className="h-4 w-4" />
-                  Upload Image
-                </Button>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImageUpload}
-                  accept="image/*"
-                  className="hidden"
-                  disabled={isGenerating}
-                />
-              </div>
-            )}
+            <div className="space-y-2">
+              <label htmlFor="imageWidth" className="text-sm font-medium text-gray-700">
+                Image Width
+              </label>
+              <Input
+                id="imageWidth"
+                type="number"
+                value={imageWidth}
+                onChange={(e) => handleDimensionChange('width', Number(e.target.value))}
+                className="border-purple-200 focus:border-purple-400 focus:ring-purple-400/20"
+                disabled={isGenerating}
+                step="16"
+                min="16"
+                max="1792"
+              />
+              <p className="text-xs text-gray-500">Max width: 1792px (multiples of 16)</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="aspectRatio"
+              checked={maintainAspectRatio}
+              onChange={(e) => setMaintainAspectRatio(e.target.checked)}
+              className="h-4 w-4 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+              disabled={isGenerating}
+            />
+            <label htmlFor="aspectRatio" className="text-sm font-medium text-gray-700">
+              Maintain aspect ratio
+            </label>
           </div>
         </form>
       </CardContent>
@@ -294,7 +311,7 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
           type="submit"
           onClick={handleButtonClick}
           className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-lg transition-all duration-200 transform hover:scale-[1.02]"
-          disabled={isGenerating || (!prompt.trim() && !imageFile)}
+          disabled={isGenerating || !prompt.trim()}
         >
           {isGenerating ? (
             <>

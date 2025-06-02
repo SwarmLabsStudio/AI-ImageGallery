@@ -81,7 +81,9 @@ export default function ImageGallery({ images, isLoading, onDelete }: ImageGalle
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {images.map((image, index) => (
+          {[...images]
+            .sort((a, b) => Number(b.id) - Number(a.id))
+            .map((image, index) => (
             <Card
               key={image.id}
               className="overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-xl hover:scale-[1.02] bg-gradient-to-br from-white via-purple-50/20 to-blue-50/20 border-purple-200/50 group relative"
