@@ -1,38 +1,70 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { ImageIcon, Loader2 } from "lucide-react"
+import { ImageIcon, Loader2, Check, ChevronsUpDown } from "lucide-react"
 import { generateImage } from "@/lib/actions"
 import type { ImageGenerationResult } from "@/lib/types"
 import { useToast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
 
 interface PromptPanelProps {
   onGenerateImage: (image: ImageGenerationResult) => void
   setIsGenerating: (isGenerating: boolean) => void
   isGenerating: boolean
+  existingCategories?: string[]
 }
 
-export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenerating }: PromptPanelProps) {
+export default function PromptPanel({ 
+  onGenerateImage, 
+  setIsGenerating, 
+  isGenerating,
+  existingCategories = []
+}: PromptPanelProps) {
   const { toast } = useToast()
-  console.log("PromptPanel component loaded");
-
   const [prompt, setPrompt] = useState("")
   const [category, setCategory] = useState("")
-  const [imageCount, setImageCount] = useState<number>(1)
   const [seed, setSeed] = useState<string>("0")
   const [imageHeight, setImageHeight] = useState<number>(768)
   const [imageWidth, setImageWidth] = useState<number>(512)
   const [maintainAspectRatio, setMaintainAspectRatio] = useState<boolean>(false)
+  const [openCombobox, setOpenCombobox] = useState(false)
+  const [categories, setCategories] = useState<string[]>([])
+  const [newCategory, setNewCategory] = useState("")
+
+  // Initialize categories with existing ones and ensure "Uncategorized" is always present
+  useEffect(() => {
+    const uniqueCategories = [...new Set([...existingCategories, "Uncategorized"])]
+      .filter(cat => cat.trim() !== "")
+      .sort()
+    setCategories(uniqueCategories)
+  }, [existingCategories])
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
     handleSubmit(e as any);
   };
+
+  const handleCategorySelect = (value: string) => {
+    setCategory(value)
+    setOpenCombobox(false)
+  }
+
+  const handleAddNewCategory = () => {
+    if (newCategory.trim() && !categories.includes(newCategory.trim())) {
+      const updatedCategories = [...categories, newCategory.trim()].sort()
+      setCategories(updatedCategories)
+      setCategory(newCategory.trim())
+      setNewCategory("")
+    }
+    setOpenCombobox(false)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,9 +78,8 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
       // Post to webhook
       const webhookData = {
         "Prompt": prompt,
-        "Image Count": imageCount.toString(),
         "Seed": seed,
-        "Category": category,
+        "Category": category || "Uncategorized",
         "Height": imageHeight.toString(),
         "Width": imageWidth.toString()
       }
@@ -130,7 +161,7 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
         }
 
         // Call generateImage just to maintain the flow, but we don't use its result
-        await generateImage(prompt, null, imageCount, seed);
+        await generateImage(prompt, null);
         
       } catch (error) {
         console.error('Error:', error);
@@ -208,36 +239,62 @@ export default function PromptPanel({ onGenerateImage, setIsGenerating, isGenera
             <label htmlFor="category" className="text-sm font-medium text-gray-700">
               Category
             </label>
-            <Input
-              id="category"
-              placeholder="image category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="border-purple-200 focus:border-purple-400 focus:ring-purple-400/20"
-              disabled={isGenerating}
-            />
+            <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={openCombobox}
+                  className="w-full justify-between border-purple-200 focus:border-purple-400 focus:ring-purple-400/20"
+                  disabled={isGenerating}
+                >
+                  {category || "Select category..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0">
+                <Command>
+                  <CommandInput placeholder="Search category..." />
+                  <CommandEmpty>
+                    <div className="p-2">
+                      <Input
+                        placeholder="Add new category..."
+                        value={newCategory}
+                        onChange={(e) => setNewCategory(e.target.value)}
+                        className="mb-2"
+                      />
+                      <Button 
+                        onClick={handleAddNewCategory}
+                        disabled={!newCategory.trim()}
+                        className="w-full"
+                      >
+                        Add Category
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup>
+                    {categories.map((cat) => (
+                      <CommandItem
+                        key={cat}
+                        value={cat}
+                        onSelect={() => handleCategorySelect(cat)}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            category === cat ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {cat}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label htmlFor="imageCount" className="text-sm font-medium text-gray-700">
-                Images to generate
-              </label>
-              <select
-                id="imageCount"
-                value={imageCount}
-                onChange={(e) => setImageCount(Number(e.target.value))}
-                className="w-full rounded-md border border-purple-200 bg-white px-3 py-2 text-sm ring-offset-background focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-400/20"
-                disabled={isGenerating}
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
-                  <option key={num} value={num}>
-                    {num}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="space-y-2">
               <label htmlFor="seed" className="text-sm font-medium text-gray-700">
                 Image seed

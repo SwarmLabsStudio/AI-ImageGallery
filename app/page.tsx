@@ -12,6 +12,9 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false)
   const { images: existingImages, isLoading: isLoadingExisting, error, refresh } = useImages()
 
+  // Get unique categories from existing images
+  const existingCategories = [...new Set(existingImages.map(img => img.category))]
+
   // Set up periodic refresh while generating
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -64,33 +67,18 @@ export default function Home() {
   ]
 
   return (
-    <main className="flex min-h-screen flex-col bg-gradient-to-br from-purple-50 via-blue-50 to-white">
-      <header className="bg-gradient-to-r from-purple-600 via-blue-600 to-purple-700 text-white shadow-lg">
-        <div className="container mx-auto px-8 py-6">
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-purple-100 bg-clip-text text-transparent">
-            AI Image Gallery
-          </h1>
-          <p className="text-purple-100 mt-2">Create stunning images with AI using text and visual prompts</p>
-        </div>
-      </header>
-
-      <div className="container mx-auto px-8 flex-1 flex flex-col md:flex-row gap-6 py-8">
-        <div className="md:w-1/3 lg:w-1/4">
-          <PromptPanel onGenerateImage={handleNewImage} setIsGenerating={setIsGenerating} isGenerating={isGenerating} />
-        </div>
-
-        <Separator orientation="vertical" className="hidden md:block bg-gradient-to-b from-purple-200 to-blue-200" />
-        <Separator className="md:hidden bg-gradient-to-r from-purple-200 to-blue-200" />
-
-        <div className="md:w-2/3 lg:w-3/4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
+    <main className="container mx-auto p-4 md:p-6 lg:p-8 min-h-screen">
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-6">
+        <PromptPanel 
+          onGenerateImage={handleNewImage} 
+          setIsGenerating={setIsGenerating} 
+          isGenerating={isGenerating}
+          existingCategories={existingCategories}
+        />
+        <div className="space-y-6">
           <ImageGallery 
             images={allImages} 
-            isLoading={isGenerating || isLoadingExisting}
+            isLoading={isGenerating} 
             onDelete={handleDelete}
           />
         </div>
