@@ -4,3 +4,6 @@ Replace the values below to match your configuration. I have left these here bec
 NEXT_PUBLIC_BASEROW_API_TOKEN=8XRUFyobgyzmejT878P2LcSvu8h3WzkW
 NEXT_PUBLIC_BASEROW_BASE_URL=http://host.docker.internal:85
 NEXT_PUBLIC_BASEROW_IMAGES_TABLE_ID=693
+//Change the url path below depending on if you are in test mode or production mode in N8N you can get the path from the webhook node.
+NEXT_PUBLIC_WEBHOOK_IMAGE_GEN_URL=http://host.docker.internal:5678/webhook/image-gen-trigger
+
