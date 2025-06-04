@@ -87,6 +87,10 @@ export default function PromptPanel({
       console.log("Sending webhook data:", webhookData)
 
       try {
+        //Change the URL Path below to use either the test path or the live path.
+        //Note if using the test path you must click the test work flow button before generating an image through the UI..
+        //When using the production URL ensure the workflow is active before generating an image.
+        //todo: move this into the env.local file for quicker setup
         const webhookResponse = await fetch('http://host.docker.internal:5678/webhook/image-gen-trigger', {
           method: 'POST',
           headers: {
