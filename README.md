@@ -7,3 +7,4 @@ NEXT_PUBLIC_BASEROW_IMAGES_TABLE_ID=693
 //Change the url path below depending on if you are in test mode or production mode in N8N you can get the path from the webhook node.
 NEXT_PUBLIC_WEBHOOK_IMAGE_GEN_URL=http://host.docker.internal:5678/webhook/image-gen-trigger
 
+Setup Instructions for all the tools used can be found here: https://docs.google.com/document/d/1SG-uLUrk3G49uDfetPNLctTKVfdPzyymv2zYy3Ncpj8/edit?usp=drive_link
