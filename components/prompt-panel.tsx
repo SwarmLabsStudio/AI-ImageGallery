@@ -37,6 +37,8 @@ export default function PromptPanel({
   const [openCombobox, setOpenCombobox] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
   const [newCategory, setNewCategory] = useState("")
+  // Use the webhook URL from the environment
+  const webhookUrl = process.env.NEXT_PUBLIC_WEBHOOK_IMAGE_GEN_URL as string;
 
   // Initialize categories with existing ones and ensure "Uncategorized" is always present
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function PromptPanel({
         //Note if using the test path you must click the test work flow button before generating an image through the UI..
         //When using the production URL ensure the workflow is active before generating an image.
         //todo: move this into the env.local file for quicker setup
-        const webhookResponse = await fetch('http://host.docker.internal:5678/webhook/image-gen-trigger', {
+        const webhookResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
